@@ -91,6 +91,7 @@ def prepare_play_mode(cfg: DictConfig, args: argparse.Namespace) -> Tuple[PlayEn
     # Models
     agent = Agent(instantiate(cfg.agent, num_actions=test_env.num_actions)).to(device).eval()
     agent.load(path_ckpt)
+    
 
     # Collect for imagination's initialization
     n = args.num_steps_initial_collect
