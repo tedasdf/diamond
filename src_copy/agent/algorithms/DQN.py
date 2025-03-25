@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 import random
-from game.gym import get_wrapper_by_name
+from utils.gym import get_wrapper_by_name
 import torch
 import torch.nn as nn
 import numpy as np
@@ -81,23 +81,17 @@ class DQNTrainer():
         #wandb params:
 
 
-    def stopping_criterion(self):
-        # notice that here t is the number of steps of the wrapped env,
-        # which is different from the number of steps in the underlying env
-        return get_wrapper_by_name(self.env, "Monitor").get_total_steps() >= self.num_timesteps
+
 
 
     def training(self):
-
+        current_step = 0
         num_param_updates = 0
         last_obs = self.env.reset()
         mean_episode_reward = -float('nan')
         best_mean_episode_reward = -float('inf')
 
-        for epoch in count():
-
-            if self.stopping_criterion() :
-                break
+        for epoch in range(self.num_timesteps):
             
             # storing the observation in replay memory
             last_idx = self.replay_buffer.store_frame(last_obs)
