@@ -1,13 +1,17 @@
 
 
+from collections import namedtuple
 import random
-from src_copy.agent.game.gym import get_wrapper_by_name
+from game.gym import get_wrapper_by_name
 import torch
 import torch.nn as nn
 import numpy as np
 import wandb
+from itertools import count
 
-class DQN(nn.Model):
+OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs"])
+
+class DQN(nn.Module):
     def __init__(self, action_n , epilson, exploration):
         super().__init__()
         self.layers = nn.Sequential(
@@ -15,7 +19,7 @@ class DQN(nn.Model):
             nn.ReLU(),
             nn.Conv2d(16,32,(4,4) , 2),
             nn.ReLU(),
-            nn.flatten(),
+            nn.Flatten(),
             nn.Linear(9 * 9 * 32, 256),
             nn.ReLU(),
             nn.Linear(256 , action_n)
@@ -45,10 +49,11 @@ class DQNTrainer():
                  gamma,
                  epilson, 
                  optimizer_spec ,
+                 exploration_schedule,
                  target_update_freq, 
-                 learning_freq, 
-                 epochs , 
+                 learning_freq,  
                  learning_starts, 
+                 num_timesteps,
                  replay_buffer,
                  batch_size):
         # env 
@@ -56,8 +61,8 @@ class DQNTrainer():
         self.action_n = env.action_space.n
         self.gamma = gamma
         # neural network
-        self.Q = DQN(self.action_n ,epilson)
-        self.target_Q = DQN(self.action_n ,epilson)
+        self.Q = DQN(self.action_n ,epilson , exploration_schedule)
+        self.target_Q = DQN(self.action_n ,epilson, exploration_schedule)
 
         self.optimizer = optimizer_spec.constructor(self.Q.parameters() , **optimizer_spec.kwargs)
 
@@ -66,9 +71,9 @@ class DQNTrainer():
         self.learning_freq = learning_freq
         
         # epochs
-        self.epochs = epochs
         self.learning_starts = learning_starts
-        
+        self.num_timesteps = num_timesteps
+
         # dataset
         self.replay_buffer = replay_buffer
         self.batch_size = batch_size
@@ -76,10 +81,10 @@ class DQNTrainer():
         #wandb params:
 
 
-
-
     def stopping_criterion(self):
-        raise NotImplementedError
+        # notice that here t is the number of steps of the wrapped env,
+        # which is different from the number of steps in the underlying env
+        return get_wrapper_by_name(self.env, "Monitor").get_total_steps() >= self.num_timesteps
 
 
     def training(self):
@@ -89,9 +94,9 @@ class DQNTrainer():
         mean_episode_reward = -float('nan')
         best_mean_episode_reward = -float('inf')
 
-        for epoch in self.epochs:
+        for epoch in count():
 
-            if self.stopping_criterion :
+            if self.stopping_criterion() :
                 break
             
             # storing the observation in replay memory
@@ -148,6 +153,12 @@ class DQNTrainer():
                 self.optimizer.zero_grad()
                 # run backward pass
                 current_Q_values.backward(d_error.data.unsqueeze(1))
+                
+                self.optimizer.step()
+                num_param_updates += 1
+
+                if num_param_updates % self.target_update_freq == 0:
+                    self.target_Q.load_state_dict(Q.state_dict())
 
             ### 4. Log progress and keep track of statistics
             episode_rewards = get_wrapper_by_name(self.env, "Monitor").get_episode_rewards()
@@ -156,21 +167,13 @@ class DQNTrainer():
             if len(episode_rewards) > 100:
                 best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
 
-
             # Log to wandb
             wandb.log({
                 "mean_episode_reward": mean_episode_reward,
                 "best_mean_episode_reward": best_mean_episode_reward,
                 "num_episodes": len(episode_rewards),
                 "exploration": self.Q.exploration.value(epoch),
-                "timestep": epoch
+                "timestep": epoch,
+                "observation": wandb.Image(obs, caption=f"Observation at timestep {epoch}")
             })
             
-#convert the RGB to gray scale 
-# down smaple to 110 x 84 resolution
-# crop an 84 x84 region of the image
-
-
-# apply this preprocessing to the last 4 frames of a histroy
-# stack to produce the input to the Q - function
-
