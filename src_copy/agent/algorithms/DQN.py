@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 import random
-from utils.gym import get_wrapper_by_name
 import torch
 import torch.nn as nn
 import numpy as np
@@ -87,13 +86,14 @@ class DQNTrainer():
     def training(self):
         current_step = 0
         num_param_updates = 0
-        last_obs = self.env.reset()
+        last_obs, _ = self.env.reset()
         mean_episode_reward = -float('nan')
         best_mean_episode_reward = -float('inf')
 
         for epoch in range(self.num_timesteps):
             
             # storing the observation in replay memory
+            
             last_idx = self.replay_buffer.store_frame(last_obs)
             
             recent_obs = self.replay_buffer.encode_recent_observation()
@@ -103,16 +103,17 @@ class DQNTrainer():
             else:
                 action = random.randrange(self.action_n)
             
-            obs, reward, done, _ = self.env.step(action)
-
+            obs, reward, done, _ , _ = self.env.step(action)
+            
             reward = max(-1.0, min(reward, 1.0))
 
             self.replay_buffer.store_effect(last_idx, action , reward, done)
 
             if done:
-                obs = self.env.reset()
+                obs,_ = self.env.reset()
                 
             last_obs = obs
+            
 
             if (epoch > self.learning_starts and 
                 epoch % self.learning_freq == 0 and 
@@ -155,11 +156,14 @@ class DQNTrainer():
                     self.target_Q.load_state_dict(Q.state_dict())
 
             ### 4. Log progress and keep track of statistics
-            episode_rewards = get_wrapper_by_name(self.env, "Monitor").get_episode_rewards()
+            episode_rewards = self.env.return_queue
+            print(episode_rewards)
             if len(episode_rewards) > 0:
-                mean_episode_reward = np.mean(episode_rewards[-100:])
+                mean_episode_reward = np.mean(list(episode_rewards)[-100:])
             if len(episode_rewards) > 100:
                 best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
+
+            
 
             # Log to wandb
             wandb.log({

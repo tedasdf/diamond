@@ -10,6 +10,9 @@ last_time4 = 0
 root = Tk()
 root.title("Controlling robotic arm")
 
+
+
+
 def send1(n):
     global last_time1
     n = int(n)+1000
@@ -43,13 +46,14 @@ def send4(n):
         ser.write(bytes(str(n), 'utf-8'))
         print(n)
         last_time4 = precise_time4
+
 def computer():
     ser.write(bytes(str(2),'utf-8'))
 def potenciometer():
     ser.write(bytes(str(1), 'utf-8'))
 
 
-ser = serial.Serial('COM7', 9600, timeout= 50,write_timeout = 50)
+ser = serial.Serial('COM3', 9600, timeout= 50,write_timeout = 50)
 computer()
 label_1 = Label(root, text = "Choose control")
 label_1.grid(row = 0, column = 0,sticky= W)

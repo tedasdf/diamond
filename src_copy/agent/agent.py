@@ -6,8 +6,11 @@ import matplotlib.pyplot as plt
 import torch.optim as optim
 from utils.schedule import LinearSchedule
 from algorithms.DQN import DQNTrainer, OptimizerSpec
-from algorithms.ReplayBuffer import ReplayBuffer
+from utils.ReplayBuffer import ReplayBuffer
+import ale_py
+from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
 
+gym.register_envs(ale_py)
 
 if __name__ == "__main__":
 
@@ -15,7 +18,7 @@ if __name__ == "__main__":
 
     # Environment & Training
     parser.add_argument("--num_timesteps", type=int, default=1000000, help="Total number of timesteps for training")
-    parser.add_argument("--replay_buffer_size", type=int, default=1000000, help="Size of the replay buffer")
+    parser.add_argument("--replay_buffer_size", type=int, default=100000, help="Size of the replay buffer")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
     parser.add_argument("--learning_starts", type=int, default=50000, help="Timesteps before training starts")
     parser.add_argument("--learning_freq", type=int, default=4, help="Frequency of model updates")
@@ -52,6 +55,8 @@ if __name__ == "__main__":
 
     # Create the environment with render_mode set to "rgb_array"
     env = gym.make('ALE/Breakout-v5', render_mode='rgb_array')
+
+    env = RecordEpisodeStatistics(env)
 
     # Replay buffer
     replay_buffer = ReplayBuffer(
