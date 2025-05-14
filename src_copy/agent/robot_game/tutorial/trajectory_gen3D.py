@@ -5,7 +5,9 @@ import modern_robotics as mr
 import pygame
 
 
-def forward_kinematics(S2 , S3 , theta2, theta3, M):
+def forward_kinematics(S1 , S2 , S3 , theta1 ,theta2, theta3, M):
+    # Forward kinematics
+    T1 = mr.MatrixExp6(S1 * theta1)
     T2 = mr.MatrixExp6(S2 * theta2)
     T3 = mr.MatrixExp6(S3 * theta3)
     return T2 @ T3 @ M
@@ -23,6 +25,11 @@ if __name__ == "__main__":
     L1, L2 , L3  = 0.5, 0.2 , 0.1
 
     # forward kinematics
+
+    w1 = np.array([0, 0, 1])
+    q1 = np.array([0, 0, 0])
+    v1 = -np.cross(w1, q1)
+
     w2 = np.array([1, 0, 0])
     q2 = np.array([0, 0, L1])
     v2 = -np.cross(w2, q2)
@@ -32,6 +39,7 @@ if __name__ == "__main__":
     v3 = -np.cross(w3, q3)
 
     # Screw axes in se(3)
+    S1 = mr.VecTose3(np.hstack((w1, v1)))
     S2 = mr.VecTose3(np.hstack((w2, v2)))
     S3 = mr.VecTose3(np.hstack((w3, v3)))
 
@@ -44,7 +52,7 @@ if __name__ == "__main__":
 
 
     # Create data
-    T = forward_kinematics(S2 , S3, theta2, theta3, M)    
+    T = forward_kinematics(S1 ,S2 , S3, theta1 ,theta2, theta3, M)    
     x, y, z = T[0, 3], T[1, 3], T[2, 3]
 
     # Create a new figure
@@ -81,6 +89,10 @@ if __name__ == "__main__":
             y += 0.01
         if keys[pygame.K_LEFT]:
             y -= 0.01
+        if keys[pygame.K_w]:
+            z += 0.01
+        if keys[pygame.K_s]:
+            z -= 0.01
 
         ax.clear()
         ax.set_xlim(-0.5, 0.5)
