@@ -14,6 +14,10 @@
 # r : S x A -> R representing the reward function
 
 
+class Policy:
+    def __init__(self )
+
+
 class SoftActorCritic:
     def __init__(self, env, actor_critic, replay_buffer, config):
         self.env = env
